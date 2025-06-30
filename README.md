@@ -6,6 +6,8 @@ A voice-powered note taking application with real-time speech-to-text transcript
 
 ## Features
 
+- 🌍 Arabic voice recognition support
+- 🔄 Real-time translation between Arabic and English
 - 🎙️ Real-time voice transcription using Web Speech API
 - 📝 Create, edit, and delete notes with timestamps
 - 🌓 Dark/Light mode toggle

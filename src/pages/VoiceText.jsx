@@ -8,6 +8,8 @@ const initialState = {
   notes: [],
   currentNote: '',
   darkMode: false,
+  recognitionLang: 'en-US',
+  translateEnabled: false,
 };
 
 function reducer(state, action) {
@@ -34,6 +36,8 @@ function reducer(state, action) {
       return { ...state, notes: action.payload };
     case 'SET_DARK_MODE':
       return { ...state, darkMode: action.payload };
+    case 'TOGGLE_TRANSLATION':
+      return { ...state, translateEnabled: !state.translateEnabled };
     default:
       return state;
   }
@@ -94,13 +98,46 @@ export default function VoiceText() {
     dispatch({ type: 'TOGGLE_LISTENING' });
   };
 
-  const saveNote = () => {
+  const translateText = async (text) => {
+    try {
+      const response = await fetch(
+        `https://translation.googleapis.com/language/translate/v2?key=${import.meta.env.VITE_GOOGLE_TRANSLATE_KEY}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            q: text,
+            source: state.recognitionLang.split('-')[0],
+            target: state.recognitionLang.startsWith('ar') ? 'en' : 'ar',
+            format: 'text'
+          })
+        }
+      );
+      
+      if (!response.ok) throw new Error('Translation failed');
+      const data = await response.json();
+      return data.data.translations[0].translatedText;
+    } catch (error) {
+      console.error('Translation error:', error);
+      return text; // Fallback to original text
+    }
+  };
+
+  const saveNote = async () => {
     if (!state.currentNote.trim()) return;
+    
+    let noteText = state.currentNote;
+    
+    if (state.translateEnabled) {
+      noteText = await translateText(noteText);
+    }
     dispatch({
       type: 'ADD_NOTE',
       payload: {
         id: Date.now(),
-        text: state.currentNote,
+        text: noteText,
         date: new Date().toLocaleString(),
       },
     });
@@ -119,7 +156,14 @@ export default function VoiceText() {
   return (
     <div className="min-h-screen transition-colors duration-200 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8 max-w-4xl backdrop-blur-sm bg-white/30 dark:bg-gray-900/30 rounded-xl shadow-lg transition-all duration-300">
-        <Header darkMode={state.darkMode} setDarkMode={(value) => dispatch({ type: 'SET_DARK_MODE', payload: value })} />
+        <Header 
+          darkMode={state.darkMode} 
+          setDarkMode={(value) => dispatch({ type: 'SET_DARK_MODE', payload: value })}
+          recognitionLang={state.recognitionLang}
+          setRecognitionLang={(value) => dispatch({ type: 'SET_RECOGNITION_LANG', payload: value })}
+          translateEnabled={state.translateEnabled}
+          setTranslateEnabled={() => dispatch({ type: 'TOGGLE_TRANSLATION' })}
+        />
         <RecordingSection
           isListening={state.isListening}
           toggleListening={toggleListening}
